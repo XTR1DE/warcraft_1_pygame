@@ -303,6 +303,7 @@ class Game:
                 if orc.health <= 0:
                     orc.kill()
             self.menu.menu()
+            print(333)
             self.clock.tick(self.fps)
             pygame.display.update()
 
