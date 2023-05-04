@@ -113,7 +113,7 @@ class Drawing:
         self.window.blit(self.font1.render("Gold: " + str(game.gold), True, (255, 255, 255)), (game.winsize[0]//1.4, -10))
 
 
-class building(GameSprite):
+class Building(GameSprite):
     def __init__(self, img, speed, health, x, y, w, h, type):
         super().__init__(img, speed, health, x, y, w, h)
         self.type = type
@@ -127,8 +127,10 @@ class building(GameSprite):
 
 
 class Player(GameSprite):
-    def __init__(self, img, speed, health, damage, x, y, w, h, type):
+    def __init__(self, img, speed, health, damage, armor, x, y, w, h, type, radius):
         super().__init__(img, speed, health, damage, x, y, w, h)
+        self.armor = armor
+        self.radius = radius
         self.direction = ''  # направление
         self.moving = False  # for animation
         self.animate_group = pygame.sprite.Group()
@@ -141,6 +143,11 @@ class Player(GameSprite):
         self.x2, self.y2 = 0, 0  # позиция, куда кликнута была мышка
         self.cooldawn_wood = 800
         self.defense = False
+        self.radius_hitbox = pygame.Rect((self.rect.x-self.radius, self.rect.y-self.radius), (self.w+self.radius*2, self.h+self.radius*2))
+
+    def radius1(self):
+        self.radius_hitbox = pygame.Rect((self.rect.x-self.radius, self.rect.y-self.radius), (self.w+self.radius*2, self.h+self.radius*2))
+        pygame.draw.rect(game.window, (255, 0, 0), self.radius_hitbox, 1)
 
     def click(self):
         # Выбор героя
@@ -240,14 +247,13 @@ class Player(GameSprite):
                     tree.kill()
                     game.wood += 50
 
-    def protect(self):
+    def attack(self):
         pass
 
     def toggle_shield(self):
         self.speed -= 1
         self.defense = True
         print('shield activate', self.defense)
-        self.protect()
 
     def disable_shield(self):
         self.speed += 1
@@ -275,13 +281,13 @@ class Game:
     def create(self):
         x, y = 500, 500
         for i in range(5):
-            self.orcs.add(Player("./rider1.png", 3, 10, 3, x, y, 40, 40, 'Rider'))
+            self.orcs.add(Player("./rider1.png", 3, 10, 3, 4, x, y, 40, 40, 'Rider', 15))
             x += 75
             y += 50
         x, y = 660, 490
         for i in range(3):
             x += 50
-            self.orcs.add(Player("./lumber_.png", 2, 5, 1, x, y, 35, 35, 'Peon'))
+            self.orcs.add(Player("./lumber_.png", 2, 5, 1, 2, x, y, 35, 35, 'Peon', 15))
         x, y = 420, 110
         for b in range(5):
             y += 30
@@ -299,11 +305,11 @@ class Game:
             self.trees.draw(self.window)
             for orc in self.orcs:
                 orc.click()
+                orc.radius1()
                 orc.draw(self.window)
                 if orc.health <= 0:
                     orc.kill()
             self.menu.menu()
-            print(333)
             self.clock.tick(self.fps)
             pygame.display.update()
 
