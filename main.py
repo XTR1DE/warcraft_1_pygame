@@ -280,6 +280,7 @@ class Player(GameSprite):
                     knight.health -= self.damage - (self.damage * knight.armor / 10)
                 elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 5:
                     knight.health -= self.damage - (self.damage * knight.armor / 10)
+                    print(knight.health)
                     self.cooldawn_attack = self.cooldawn_max
 
     def toggle_shield(self):
