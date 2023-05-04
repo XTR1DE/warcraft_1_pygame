@@ -55,13 +55,16 @@ class Drawing:
         self.menu_mask = pygame.mask.from_surface(self.menus_image)  # Создаем маску для изображения меню
         self.mini_map = GameSprite('./icons/Black.png', 0, 0, 0, 6, 27, 315, 350)
         self.mini_map.image = self.mini_map.image.convert_alpha()  # Грузим изображение мини-карты и изменяем масштаб до 313x350 пикселей
-        self.cancel = GameSprite('./icons/cancel.png', 0, 0, 0, 227, 910, 70, 70)  # Создаем игровой спрайт "Отменить"
-        self.shield = GameSprite('./icons/shield_icon.png', 0, 0, 0, 20, 614, 110, 90)
+        self.cancel = GameSprite("./icons/Cancel.png", 0, 0, 0, 227, 910, 70, 70)  # Создаем игровой спрайт "Отменить"
+        self.shield = GameSprite("./icons/Shield_icon.png", 0, 0, 0, 20, 614, 110, 90)
+        self.axe = GameSprite("./icons/Axe.png", 0, 0, 0, 150, 614, 110, 90)
+
         self.avatars = {
             "Peon": pygame.transform.scale(pygame.image.load('./icons/Peon_icon.png'), (144, 102)),
             "Spearman": pygame.transform.scale(pygame.image.load('./icons/Spearman_icon.png'), (144, 102)),
             "Rider": pygame.transform.scale(pygame.image.load('./icons/Rider_icon.png'), (144, 102)),
-            "Black": pygame.transform.scale(pygame.image.load('./icons/Black.png'), (144, 102))
+            "Black": pygame.transform.scale(pygame.image.load('./icons/Black.png'), (144, 102)),
+            "Axe": pygame.transform.scale(pygame.image.load('./icons/Axe.png'), (144, 102)),
         }
         self.avatars_cords = (22, 401)
 
@@ -81,6 +84,10 @@ class Drawing:
                 pass  # Пропускаем
 
         if self.chooses > 0:
+            for orc in self.orcs:
+                if orc.choosed:
+                    if orc.can_attack:
+                        self.window.blit(self.axe.image, (self.axe.rect.x, self.axe.rect.y))
             self.window.blit(self.shield.image, (self.shield.rect.x, self.shield.rect.y))
             self.window.blit(self.cancel.image, (self.cancel.rect.x, self.cancel.rect.y))  # Отображаем кнопку "Отменить"
             if mouse_clicked[0]:  # Проверяем, нажата ли левая кнопка мыши
@@ -96,6 +103,16 @@ class Drawing:
                             else:
                                 orc.disable_shield()
                             orc.choosed = False
+                if self.axe.rect.collidepoint(pygame.mouse.get_pos()):
+                    for orc in self.orcs:
+                        if orc.choosed:
+                            if not orc.defense:
+                                orc.attacks = True
+                                orc.choosed = False
+                            else:
+                                print("can't attack, you have shield ")
+                                orc.choosed = False
+                                orc.attacks = False
         if self.chooses == 1:  # Если выбран только один орк
             for orc in self.orcs:  # Проходимся по всем оркам
                 if orc.choosed:  # Проверяем, выделен ли текущий орк
@@ -131,18 +148,20 @@ class Player(GameSprite):
         super().__init__(img, speed, health, damage, x, y, w, h)
         self.armor = armor
         self.radius = radius
-        self.direction = ''  # направление
-        self.moving = False  # for animation
-        self.animate_group = pygame.sprite.Group()
-        self.a, self.b, self.c = 0, 0, 0  # катеты и гипотенуза, для равномерного перемещение
-        self.angle = 0  # угол поворота
-        self.dx, self.dy = 0, 0  # равномерное смещение
-        self.choosed = False  # выбран ли герой
         self.type = type  # тип героя
+        self.direction = ''  # направление
         self.collect_wood = self.type == 'Peon'  # если он лесоруб, то может собирать дерево
-        self.x2, self.y2 = 0, 0  # позиция, куда кликнута была мышка
         self.cooldawn_wood = 800
+        self.cooldawn_attack = 150 if self.type == 'Rider' or self.type == 'Spearman' else 200
+        self.cooldawn_max = self.cooldawn_attack
+        self.choosed = False  # выбран ли герой
         self.defense = False
+        self.can_attack = not self.type == 'Peon'
+        self.attacks = False
+
+        self.x2, self.y2 = 0, 0  # позиция, куда кликнута была мышка
+        self.angle, self.a, self.b, self.c = 0, 0, 0, 0  # катеты и гипотенуза, для равномерного перемещение  / угол поворота
+        self.dx, self.dy = 0, 0  # равномерное смещение
         self.radius_hitbox = pygame.Rect((self.rect.x-self.radius, self.rect.y-self.radius), (self.w+self.radius*2, self.h+self.radius*2))
 
     def radius1(self):
@@ -248,17 +267,40 @@ class Player(GameSprite):
                     game.wood += 50
 
     def attack(self):
-        pass
+        for knight in game.knights:
+            if self.radius_hitbox.colliderect(knight):
+                self.cooldawn_attack -= 1
+                if self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5:
+                    knight.health -= self.damage-(self.damage*knight.armor/10)
+                elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 2:
+                    knight.health -= self.damage - (self.damage * knight.armor / 10)
+                elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 3:
+                    knight.health -= self.damage - (self.damage * knight.armor / 10)
+                elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 4:
+                    knight.health -= self.damage - (self.damage * knight.armor / 10)
+                elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 5:
+                    knight.health -= self.damage - (self.damage * knight.armor / 10)
+                    self.cooldawn_attack = self.cooldawn_max
 
     def toggle_shield(self):
         self.speed -= 1
         self.defense = True
-        print('shield activate', self.defense)
+        self.attacks = False
+        print('shield activate', '\n', "defense - ", self.defense, "\n")
 
     def disable_shield(self):
         self.speed += 1
         self.defense = False
-        print('shield was disable', self.defense)
+        self.attacks = True
+        print('shield was disable', '\n', "defense - ", self.defense, "\n")
+
+
+class Knight(GameSprite):
+    def __init__(self, img, speed, health, damage, armor, x, y, w, h, type, radius):
+        super().__init__(img, speed, health, damage, x, y, w, h)
+        self.armor = armor
+        self.type = type
+        self.radius = radius
 
 
 class Game:
@@ -272,6 +314,7 @@ class Game:
         self.map_cords_y = 0
         self.background = pygame.transform.scale(pygame.image.load("./map.png"), (2000, 2000))
         self.orcs = pygame.sprite.Group()
+        self.knights = pygame.sprite.Group()
         self.trees = pygame.sprite.Group()
         self.menu = Drawing(self.window, self.background, self.orcs, self.winsize)  # menu
         self.wood = 0
@@ -287,7 +330,7 @@ class Game:
         x, y = 660, 490
         for i in range(3):
             x += 50
-            self.orcs.add(Player("./lumber_.png", 2, 5, 1, 2, x, y, 35, 35, 'Peon', 15))
+            self.orcs.add(Player("./peon.png", 2, 5, 1, 2, x, y, 35, 35, 'Peon', 15))
         x, y = 420, 110
         for b in range(5):
             y += 30
@@ -295,6 +338,7 @@ class Game:
                 self.trees.add(GameSprite("./tree.png", 0, 3, 0, x, y, 40, 40))
                 x += 30
             x = 420
+        self.knights.add(Knight("knight.png", 3, 10, 4, 4, 1200, 500, 40, 40, 'Rider', 15))
 
     def run(self):
         while self.game:
@@ -307,8 +351,15 @@ class Game:
                 orc.click()
                 orc.radius1()
                 orc.draw(self.window)
+                if not orc.type == 'Peon' and orc.attacks:
+                    orc.attack()
                 if orc.health <= 0:
                     orc.kill()
+            for knight in self.knights:
+                knight.draw(self.window)
+                knight.hitbox()
+                if knight.health <= 0:
+                    knight.kill()
             self.menu.menu()
             self.clock.tick(self.fps)
             pygame.display.update()
