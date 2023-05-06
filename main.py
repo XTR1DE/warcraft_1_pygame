@@ -54,19 +54,24 @@ class Drawing:
         self.font = pygame.font.Font('BLKCHCRY.TTF', 38)  # Шрифт
         self.menus_image = pygame.transform.scale(pygame.image.load('./menus.png').convert_alpha(), (1560, 1060))  # Грузим изображение меню и изменяем масштаб до 1560x1060 пикселей
         self.menu_mask = pygame.mask.from_surface(self.menus_image)  # Создаем маску для изображения меню
-        self.mini_map = GameSprite('./icons/Black.png', 0, 0, 0, 6, 27, 315, 350)
+        self.mini_map = GameSprite('./icons/Black_icon.png', 0, 0, 0, 6, 27, 315, 350)
         self.mini_map.image = self.mini_map.image.convert_alpha()  # Грузим изображение мини-карты и изменяем масштаб до 313x350 пикселей
-        self.cancel = GameSprite("./icons/Cancel.png", 0, 0, 0, 227, 910, 70, 70)  # Создаем игровой спрайт "Отменить"
+        self.cancel = GameSprite("./icons/Cancel_icon.png", 0, 0, 0, 227, 910, 70, 70)  # Создаем игровой спрайт "Отменить"
         self.shield = GameSprite("./icons/Shield_icon.png", 0, 0, 0, 20, 614, 110, 90)
-        self.axe = GameSprite("./icons/Axe.png", 0, 0, 0, 150, 614, 110, 90)
+        self.get_back = GameSprite("./icons/BackToBase.png", 0, 0, 0, 20, 710, 110, 90)
+        # Peon
+        self.axe = GameSprite("./icons/Axe_icon.png", 0, 0, 0, 150, 614, 110, 90)
+        self.auto_farm = GameSprite("./icons/Auto_Farm_icon.png", 0, 0, 0, 20, 805, 110, 90)
+        self.build = GameSprite("./icons/Build_icon.png", 0, 0, 0, 150, 805, 110, 90)
+        self.repair = GameSprite("./icons/Repair_icon.png", 0, 0, 0, 150, 710, 110, 90)
 
-        self.avatars_cords, self.avatars_size = (22, 401), (144, 102)
+        self.avatars_cords, self.avatars_size, self.atributes_cords = (22, 401), (144, 102), (160, 401)
         self.avatars = {
             "Peon": pygame.transform.scale(pygame.image.load('./icons/Peon_icon.png'), self.avatars_size),
             "Spearman": pygame.transform.scale(pygame.image.load('./icons/Spearman_icon.png'), self.avatars_size),
             "Rider": pygame.transform.scale(pygame.image.load('./icons/Rider_icon.png'), self.avatars_size),
-            "Black": pygame.transform.scale(pygame.image.load('./icons/Black.png'), self.avatars_size),
-            "Axe": pygame.transform.scale(pygame.image.load('./icons/Axe.png'), self.avatars_size),
+            "Black": pygame.transform.scale(pygame.image.load('./icons/Black_icon.png'), self.avatars_size),
+            "Axe": pygame.transform.scale(pygame.image.load('./icons/Axe_icon.png'), self.avatars_size),
         }
         self.avatars_knight = {
             "Rider": pygame.transform.scale(pygame.image.load('./icons/Knight_Rider_icon.png'), self.avatars_size),
@@ -82,15 +87,6 @@ class Drawing:
         self.chooses = len([orc for orc in self.orcs if orc.choosed])
         self.knight_chooses = len([knight for knight in self.knights if knight.choosed])
 
-        if mouse_clicked[2]:  # Проверяем, нажата ли правая кнопка мыши
-            try:
-                if self.menu_mask.get_at(pygame.mouse.get_pos()) \
-                        or self.mini_map.rect.collidepoint(pygame.mouse.get_pos()):  # Получаем цвет пикселя из маски по координатам курсора мыши
-                    for orc in self.orcs:  # Проходимся по всем оркам
-                        orc.direction = ''  # Устанавливаем у всех орков пустое направление
-            except IndexError:  # Если происходит ошибка индексации
-                pass  # Пропускаем
-
         if self.knight_chooses > 0:
             for orc in self.orcs:
                 orc.choosed = False
@@ -104,18 +100,23 @@ class Drawing:
             for knight in self.knights:
                 if knight.choosed:
                     self.window.blit(self.avatars_knight[knight.type], self.avatars_cords)
-                    self.window.blit(self.font.render(knight.type, True, (255, 255, 255)), (26, 514))
-                    self.window.blit(self.font.render("Health: " + str(knight.health), True, (255, 255, 255)), (160, 401))
-                    self.window.blit(self.font.render("Damage: " + str(knight.damage), True, (255, 255, 255)), (160, 441))
-                    self.window.blit(self.font.render("Armor: " + str(knight.armor), True, (255, 255, 255)), (160, 481))
+                    self.window.blit(self.font.render(knight.type, True, (255, 255, 255)), (self.avatars_cords[0], self.avatars_cords[1]+self.avatars_size[1]))
+                    self.window.blit(self.font.render("Health: " + str(round(knight.health, 2)), True, (255, 255, 255)), self.atributes_cords)
+                    self.window.blit(self.font.render("Damage: " + str(knight.damage), True, (255, 255, 255)), (self.atributes_cords[0], self.atributes_cords[1]+40))
+                    self.window.blit(self.font.render("Armor: " + str(knight.armor), True, (255, 255, 255)), (self.atributes_cords[0], self.atributes_cords[1]+80))
+
+        if self.knight_chooses > 1:  # Если выбрано больше одного рыцаря
+            self.window.blit(self.font.render("Group " + str(self.knight_chooses), True, (255, 255, 255)), (self.avatars_cords[0], self.avatars_cords[1]+self.avatars_size[1]))  # Отображаем надпись "Группа" и количество выбранных рыцарей
+            self.window.blit(self.avatars['Black'], self.avatars_cords)
 
         if self.chooses > 0:
             for knight in self.knights:
                 knight.choosed = False
-            for orc in self.orcs:
+            '''for orc in self.orcs:
                 if orc.choosed:
                     if orc.can_attack:
-                        self.window.blit(self.axe.image, (self.axe.rect.x, self.axe.rect.y))
+                        self.window.blit(self.axe.image, (self.axe.rect.x, self.axe.rect.y))'''
+            self.window.blit(self.get_back.image, (self.get_back.rect.x, self.get_back.rect.y))
             self.window.blit(self.shield.image, (self.shield.rect.x, self.shield.rect.y))
             self.window.blit(self.cancel.image, (self.cancel.rect.x, self.cancel.rect.y))  # Отображаем кнопку "Отменить"
             if mouse_clicked[0]:  # Проверяем, нажата ли левая кнопка мыши
@@ -131,7 +132,12 @@ class Drawing:
                             else:
                                 orc.disable_shield()
                             orc.choosed = False
-                if self.axe.rect.collidepoint(pygame.mouse.get_pos()):
+                if self.get_back.rect.collidepoint(pygame.mouse.get_pos()):
+                    print('coming home')
+                    for orc in self.orcs:
+                        orc.choosed = False
+
+                '''if self.axe.rect.collidepoint(pygame.mouse.get_pos()):
                     for orc in self.orcs:
                         if orc.choosed:
                             if not orc.defense:
@@ -140,18 +146,61 @@ class Drawing:
                             else:
                                 print("can't attack, you have shield ")
                                 orc.choosed = False
-                                orc.attacks = False
+                                orc.attacks = False '''
+
         if self.chooses == 1:  # Если выбран только один орк
             for orc in self.orcs:  # Проходимся по всем оркам
                 if orc.choosed:  # Проверяем, выделен ли текущий орк
+                    if orc.can_attack:
+                        self.window.blit(self.axe.image, (self.axe.rect.x, self.axe.rect.y))
+                    if orc.type == 'Peon':
+                        self.window.blit(self.auto_farm.image, (self.auto_farm.rect.x, self.auto_farm.rect.y))
+                        self.window.blit(self.build.image, (self.build.rect.x, self.build.rect.y))
+                        self.window.blit(self.repair.image, (self.repair.rect.x, self.repair.rect.y))
                     self.window.blit(self.avatars[orc.type], self.avatars_cords)
-                    self.window.blit(self.font.render(orc.type, True, (255, 255, 255)), (26, 514))  # Отображаем тип орка
-                    self.window.blit(self.font.render("Health: " + str(orc.health), True, (255, 255, 255)), (160, 401))  # Отображаем количество здоровья орка
-                    self.window.blit(self.font.render("Damage: " + str(orc.damage), True, (255, 255, 255)), (160, 441))  # Отображаем количество урона, наносимого орком
-                    self.window.blit(self.font.render("Armor: " + str(orc.armor), True, (255, 255, 255)), (160, 481))
+                    self.window.blit(self.font.render(orc.type, True, (255, 255, 255)), (self.avatars_cords[0], self.avatars_cords[1]+self.avatars_size[1]))  # Отображаем тип орка
+                    self.window.blit(self.font.render("Health: " + str(round(orc.health, 2)), True, (255, 255, 255)), self.atributes_cords)  # Отображаем количество здоровья орка
+                    self.window.blit(self.font.render("Damage: " + str(orc.damage), True, (255, 255, 255)), (self.atributes_cords[0], self.atributes_cords[1]+40))  # Отображаем количество урона, наносимого орком
+                    self.window.blit(self.font.render("Armor: " + str(orc.armor), True, (255, 255, 255)), (self.atributes_cords[0], self.atributes_cords[1]+80))
+                    self.window.blit(self.shield.image, (self.shield.rect.x, self.shield.rect.y))
 
+                    if mouse_clicked[0]:  # Проверяем, нажата ли левая кнопка мыши
+                        if orc.type == 'Peon':
+                            if self.auto_farm.rect.collidepoint(pygame.mouse.get_pos()):
+                                if orc.farming:
+                                    orc.farming = False
+                                else:
+                                    orc.farming = True
+                                    print('Farming')
+                                orc.choosed = False
+                            if self.build.rect.collidepoint(pygame.mouse.get_pos()):
+                                if orc.building:
+                                    orc.building = False
+                                else:
+                                    orc.building = True
+                                    print('Building')
+                                orc.choosed = False
+
+                        if orc.can_attack:
+                            if self.axe.rect.collidepoint(pygame.mouse.get_pos()):
+                                if not orc.defense:
+                                    if orc.attacks:
+                                        orc.attacks = False
+                                    else:
+                                        orc.attacks = True
+                                    orc.choosed = False
+                                else:
+                                    print("can't attack, you have shield ", "\n")
+                                    orc.choosed = False
+                                print(orc.attacks)
+                        if self.shield.rect.collidepoint(pygame.mouse.get_pos()):
+                            if not orc.defense:
+                                orc.toggle_shield()
+                            else:
+                                orc.disable_shield()
+                            orc.choosed = False
         if self.chooses > 1:  # Если выбрано больше одного орка
-            self.window.blit(self.font.render("Group " + str(self.chooses), True, (255, 255, 255)), (26, 514))  # Отображаем надпись "Группа" и количество выбранных орков
+            self.window.blit(self.font.render("Group " + str(self.chooses), True, (255, 255, 255)), (self.avatars_cords[0], self.avatars_cords[1]+self.avatars_size[1]))  # Отображаем надпись "Группа" и количество выбранных орков
             self.window.blit(self.avatars['Black'], self.avatars_cords)
 
         if self.chooses == 0 and self.knight_chooses == 0:
@@ -182,11 +231,13 @@ class Player(GameSprite):
         self.direction = ''  # направление
         self.collect_wood = self.type == 'Peon'  # если он лесоруб, то может собирать дерево
         self.cooldawn_wood = 800
-        self.cooldawn_attack = 150 if self.type == 'Rider' or self.type == 'Spearman' else 200
+        self.cooldawn_attack = 200 if self.type == 'Rider' or self.type == 'Spearman' else 250
         self.cooldawn_max = self.cooldawn_attack
         self.choosed = False  # выбран ли герой
         self.defense = False
         self.can_attack = not self.type == 'Peon'
+        self.farming = False
+        self.building = False
         self.attacks = False
 
         self.x2, self.y2 = 0, 0  # позиция, куда кликнута была мышка
@@ -248,6 +299,12 @@ class Player(GameSprite):
                     self.direction = '3'
                 if self.rect.centerx > self.x2 and self.rect.centery > self.y2:
                     self.direction = '2'
+                try:
+                    if game.menu.menu_mask.get_at(pygame.mouse.get_pos()) \
+                            or game.menu.mini_map.rect.collidepoint(pygame.mouse.get_pos()):
+                        self.direction = ''
+                except IndexError:  # Если происходит ошибка индексации
+                    pass  # Пропускаем
         self.move()
 
     def move(self):
@@ -279,9 +336,11 @@ class Player(GameSprite):
             else:
                 self.direction = ''
                 self.choosed = False
+
+    def auto_farm(self):
         if self.collect_wood:
             for tree in game.trees:
-                if tree.rect.colliderect(self.rect.x, self.rect.y, self.w, self.h):
+                if tree.rect.colliderect(self.radius_hitbox):
                     self.cooldawn_wood -= 1
                     # if:
                     #    if:
@@ -295,6 +354,9 @@ class Player(GameSprite):
                 if tree.health <= 0:
                     tree.kill()
                     game.wood += 50
+
+    def construct(self):
+        print(1)
 
     def attack(self):
         for knight in game.knights:
@@ -318,15 +380,15 @@ class Player(GameSprite):
                     self.cooldawn_attack = self.cooldawn_max
 
     def toggle_shield(self):
+        self.armor += 2
         self.speed -= 1
         self.defense = True
-        self.attacks = False
         print('shield activate', '\n', "defense - ", self.defense, "\n")
 
     def disable_shield(self):
+        self.armor -= 2
         self.speed += 1
         self.defense = False
-        self.attacks = True
         print('shield was disable', '\n', "defense - ", self.defense, "\n")
 
 
@@ -336,6 +398,34 @@ class Knight(GameSprite):
         self.armor = armor
         self.type = type
         self.radius = radius
+        self.cooldawn_attack = 200 if self.type == 'Rider' or self.type == 'Arbalester' else 250
+        self.cooldawn_max = self.cooldawn_attack
+        self.radius_hitbox = pygame.Rect((self.rect.x - self.radius, self.rect.y - self.radius), (self.w + self.radius * 2, self.h + self.radius * 2))
+
+    def radius1(self):
+        self.radius_hitbox = pygame.Rect((self.rect.x - self.radius, self.rect.y - self.radius), (self.w + self.radius * 2, self.h + self.radius * 2))
+        pygame.draw.rect(game.window, (255, 0, 0), self.radius_hitbox, 1)
+
+    def attack(self):
+        for orc in game.orcs:
+            if self.radius_hitbox.colliderect(orc):
+                self.cooldawn_attack -= 1
+                if self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5:
+                    orc.health -= self.damage - (self.damage * orc.armor / 10)
+                    # animate
+                elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 2:
+                    orc.health -= self.damage - (self.damage * orc.armor / 10)
+                    # animate
+                elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 3:
+                    orc.health -= self.damage - (self.damage * orc.armor / 10)
+                    # animate
+                elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 4:
+                    orc.health -= self.damage - (self.damage * orc.armor / 10)
+                    # animate
+                elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 5:  # сколько анимаций на столько и делить частей
+                    orc.health -= self.damage - (self.damage * orc.armor / 10)
+                    # animate
+                    self.cooldawn_attack = self.cooldawn_max
 
     def update(self):
         if pygame.mouse.get_pressed()[0]:
@@ -345,6 +435,8 @@ class Knight(GameSprite):
 
     def auto_attack(self):
         self.update()
+        self.attack()
+        self.radius1()
 
 
 class Game:
@@ -382,8 +474,11 @@ class Game:
                 self.trees.add(GameSprite("./tree.png", 0, 3, 0, x, y, 40, 40))
                 x += 30
             x = 420
-        self.knights.add(Knight("knight.png", 3, 10, 4, 4, 1200, 500, 40, 40, 'Rider', 15))
-        self.orcs.add(Player("Spearman.png", 3, 10, 4, 4, 1200, 400, 40, 40, 'Spearman', 25))
+        x = 1200
+        for i in range(3):
+            self.knights.add(Knight("knight.png", 3, 10, 4, 4, x, 500, 40, 40, 'Rider', 15))
+            x += 80
+        self.orcs.add(Player("Spearman.png", 3, 10, 4, 4, 1150, 400, 40, 40, 'Spearman', 25))
 
     def run(self):
         while self.game:
@@ -398,6 +493,11 @@ class Game:
                 orc.draw(self.window)
                 if not orc.type == 'Peon' and orc.attacks:
                     orc.attack()
+                if orc.type == 'Peon':
+                    if orc.farming:
+                        orc.auto_farm()
+                    if orc.building:
+                        orc.construct()
                 if orc.health <= 0:
                     orc.kill()
             for knight in self.knights:
