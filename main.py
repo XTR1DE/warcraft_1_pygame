@@ -42,11 +42,12 @@ class GameSprite(pygame.sprite.Sprite):
 
 
 class Drawing:
-    def __init__(self, window, background, orcs, winsize):
+    def __init__(self, window, background, orcs, knights, winsize):
         self.window = window  # Определяем окно, в котором будет рисоваться
         self.background = background  # Определяем фон
         self.winsize = winsize  # Определяем размер окна
         self.orcs = orcs  # Определяем массив орков
+        self.knights = knights
         self.chooses = 0
 
         self.font1 = pygame.font.Font('BLKCHCRY.TTF', 58)  # Шрифт
@@ -59,20 +60,27 @@ class Drawing:
         self.shield = GameSprite("./icons/Shield_icon.png", 0, 0, 0, 20, 614, 110, 90)
         self.axe = GameSprite("./icons/Axe.png", 0, 0, 0, 150, 614, 110, 90)
 
+        self.avatars_cords, self.avatars_size = (22, 401), (144, 102)
         self.avatars = {
-            "Peon": pygame.transform.scale(pygame.image.load('./icons/Peon_icon.png'), (144, 102)),
-            "Spearman": pygame.transform.scale(pygame.image.load('./icons/Spearman_icon.png'), (144, 102)),
-            "Rider": pygame.transform.scale(pygame.image.load('./icons/Rider_icon.png'), (144, 102)),
-            "Black": pygame.transform.scale(pygame.image.load('./icons/Black.png'), (144, 102)),
-            "Axe": pygame.transform.scale(pygame.image.load('./icons/Axe.png'), (144, 102)),
+            "Peon": pygame.transform.scale(pygame.image.load('./icons/Peon_icon.png'), self.avatars_size),
+            "Spearman": pygame.transform.scale(pygame.image.load('./icons/Spearman_icon.png'), self.avatars_size),
+            "Rider": pygame.transform.scale(pygame.image.load('./icons/Rider_icon.png'), self.avatars_size),
+            "Black": pygame.transform.scale(pygame.image.load('./icons/Black.png'), self.avatars_size),
+            "Axe": pygame.transform.scale(pygame.image.load('./icons/Axe.png'), self.avatars_size),
         }
-        self.avatars_cords = (22, 401)
+        self.avatars_knight = {
+            "Rider": pygame.transform.scale(pygame.image.load('./icons/Knight_Rider_icon.png'), self.avatars_size),
+            "Knight": pygame.transform.scale(pygame.image.load('./icons/Knight_icon.png'), self.avatars_size),
+            "Arbalester": pygame.transform.scale(pygame.image.load('./icons/Knight_Arbalester_icon.png'), self.avatars_size),
+            "Catapult": pygame.transform.scale(pygame.image.load('./icons/Knight_Catapult_icon.png'), self.avatars_size)
+        }
 
     def menu(self):
         mouse_clicked = pygame.mouse.get_pressed()
         self.window.blit(self.menus_image, (0, 0), )  # Отрисовываем изображение меню
         self.window.blit(self.mini_map.image, (self.mini_map.rect.x, self.mini_map.rect.y))  # Отрисовываем изображение мини-карты
         self.chooses = len([orc for orc in self.orcs if orc.choosed])
+        self.knight_chooses = len([knight for knight in self.knights if knight.choosed])
 
         if mouse_clicked[2]:  # Проверяем, нажата ли правая кнопка мыши
             try:
@@ -83,7 +91,27 @@ class Drawing:
             except IndexError:  # Если происходит ошибка индексации
                 pass  # Пропускаем
 
+        if self.knight_chooses > 0:
+            for orc in self.orcs:
+                orc.choosed = False
+            self.window.blit(self.cancel.image, (self.cancel.rect.x, self.cancel.rect.y))
+            if mouse_clicked[0]:  # Проверяем, нажата ли левая кнопка мыши
+                if self.cancel.rect.collidepoint(pygame.mouse.get_pos()):  # Проверяем, была ли нажата кнопка "Отменить"
+                    for knight in self.knights:
+                        knight.choosed = False
+
+        if self.knight_chooses == 1:
+            for knight in self.knights:
+                if knight.choosed:
+                    self.window.blit(self.avatars_knight[knight.type], self.avatars_cords)
+                    self.window.blit(self.font.render(knight.type, True, (255, 255, 255)), (26, 514))
+                    self.window.blit(self.font.render("Health: " + str(knight.health), True, (255, 255, 255)), (160, 401))
+                    self.window.blit(self.font.render("Damage: " + str(knight.damage), True, (255, 255, 255)), (160, 441))
+                    self.window.blit(self.font.render("Armor: " + str(knight.armor), True, (255, 255, 255)), (160, 481))
+
         if self.chooses > 0:
+            for knight in self.knights:
+                knight.choosed = False
             for orc in self.orcs:
                 if orc.choosed:
                     if orc.can_attack:
@@ -116,15 +144,17 @@ class Drawing:
         if self.chooses == 1:  # Если выбран только один орк
             for orc in self.orcs:  # Проходимся по всем оркам
                 if orc.choosed:  # Проверяем, выделен ли текущий орк
-                    self.window.blit(self.avatars[orc.type], (24, 401))
+                    self.window.blit(self.avatars[orc.type], self.avatars_cords)
                     self.window.blit(self.font.render(orc.type, True, (255, 255, 255)), (26, 514))  # Отображаем тип орка
                     self.window.blit(self.font.render("Health: " + str(orc.health), True, (255, 255, 255)), (160, 401))  # Отображаем количество здоровья орка
                     self.window.blit(self.font.render("Damage: " + str(orc.damage), True, (255, 255, 255)), (160, 441))  # Отображаем количество урона, наносимого орком
+                    self.window.blit(self.font.render("Armor: " + str(orc.armor), True, (255, 255, 255)), (160, 481))
+
         if self.chooses > 1:  # Если выбрано больше одного орка
             self.window.blit(self.font.render("Group " + str(self.chooses), True, (255, 255, 255)), (26, 514))  # Отображаем надпись "Группа" и количество выбранных орков
             self.window.blit(self.avatars['Black'], self.avatars_cords)
 
-        if self.chooses == 0:
+        if self.chooses == 0 and self.knight_chooses == 0:
             self.window.blit(self.avatars['Black'], self.avatars_cords)
         self.window.blit(self.font1.render("Lumber: " + str(game.wood), True, (255, 255, 255)), (game.winsize[0]//4, -10))
         self.window.blit(self.font1.render("Gold: " + str(game.gold), True, (255, 255, 255)), (game.winsize[0]//1.4, -10))
@@ -272,15 +302,19 @@ class Player(GameSprite):
                 self.cooldawn_attack -= 1
                 if self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5:
                     knight.health -= self.damage-(self.damage*knight.armor/10)
+                    # animate
                 elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 2:
                     knight.health -= self.damage - (self.damage * knight.armor / 10)
+                    # animate
                 elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 3:
                     knight.health -= self.damage - (self.damage * knight.armor / 10)
+                    # animate
                 elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 4:
                     knight.health -= self.damage - (self.damage * knight.armor / 10)
-                elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 5:
+                    # animate
+                elif self.cooldawn_attack == self.cooldawn_max - self.cooldawn_max // 5 * 5: # сколько анимаций на столько и делить частей
                     knight.health -= self.damage - (self.damage * knight.armor / 10)
-                    print(knight.health)
+                    # animate
                     self.cooldawn_attack = self.cooldawn_max
 
     def toggle_shield(self):
@@ -303,6 +337,15 @@ class Knight(GameSprite):
         self.type = type
         self.radius = radius
 
+    def update(self):
+        if pygame.mouse.get_pressed()[0]:
+            if self.rect.collidepoint(pygame.mouse.get_pos()):
+                self.choosed = True
+        self.hitbox() if self.choosed else 0
+
+    def auto_attack(self):
+        self.update()
+
 
 class Game:
     def __init__(self):
@@ -317,7 +360,7 @@ class Game:
         self.orcs = pygame.sprite.Group()
         self.knights = pygame.sprite.Group()
         self.trees = pygame.sprite.Group()
-        self.menu = Drawing(self.window, self.background, self.orcs, self.winsize)  # menu
+        self.menu = Drawing(self.window, self.background, self.orcs, self.knights, self.winsize)  # menu
         self.wood = 0
         self.gold = 0
         self.create()
@@ -340,6 +383,7 @@ class Game:
                 x += 30
             x = 420
         self.knights.add(Knight("knight.png", 3, 10, 4, 4, 1200, 500, 40, 40, 'Rider', 15))
+        self.orcs.add(Player("Spearman.png", 3, 10, 4, 4, 1200, 400, 40, 40, 'Spearman', 25))
 
     def run(self):
         while self.game:
@@ -358,7 +402,7 @@ class Game:
                     orc.kill()
             for knight in self.knights:
                 knight.draw(self.window)
-                knight.hitbox()
+                knight.auto_attack()
                 if knight.health <= 0:
                     knight.kill()
             self.menu.menu()
