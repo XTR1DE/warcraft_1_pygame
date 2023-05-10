@@ -42,6 +42,10 @@ class GameSprite(pygame.sprite.Sprite):
         pygame.draw.rect(game.window, (78, 78, 78), (self.rect.x, self.rect.y, self.w, self.h), 1)
 
 
+class Fog(GameSprite):
+    pass
+
+
 class Drawing:
     def __init__(self, window, background, orcs, knights, buildings, winsize, map_size, map_cords_x, map_cords_y):
         self.window = window  # Определяем окно, в котором будет рисоваться
@@ -102,6 +106,7 @@ class Drawing:
         }
 
     def map(self):
+        self.fov = pygame.rect.Rect((game.map_cords_x/12*-1+self.mini_map.w/12+14, game.map_cords_y/12*-1+self.mini_map.h/12), (self.winsize[0]/12-self.mini_map.w/12, self.winsize[1]/12))
         self.window.blit(self.mini_map.image, (self.mini_map.rect.x, self.mini_map.rect.y))  # Отрисовываем изображение мини-карты
         for orc in self.orcs:
             self.window.blit(pygame.transform.scale(pygame.image.load('./icons/Green_icon.png'), (3, 3)), (self.mini_map.rect.x + orc.rect.x//12, self.mini_map.rect.y + orc.rect.y//12))
@@ -111,16 +116,17 @@ class Drawing:
             else:
                 self.window.blit(pygame.transform.scale(pygame.image.load('./icons/Yellow_icon.png'), (6, 6)), (self.mini_map.rect.x + building.rect.x//12, self.mini_map.rect.y + building.rect.y//12))
         if self.mini_map.rect.collidepoint(pygame.mouse.get_pos()):
-            if not (pygame.mouse.get_pos()[0] - ((self.winsize[0] // 12) / 2) < self.mini_map.rect.x
-                    or (pygame.mouse.get_pos()[0] + ((self.winsize[0] // 12) / 2)) > (self.mini_map.rect.x + self.mini_map.w)
+            if not (pygame.mouse.get_pos()[0] - ((self.winsize[0] // 12) / 2-self.mini_map.rect.x) < self.mini_map.rect.x
+                    or (pygame.mouse.get_pos()[0] + ((self.winsize[0] // 12) / 2 - self.mini_map.w//12)) > (self.mini_map.rect.x + self.mini_map.w)
                     or pygame.mouse.get_pos()[1] - ((self.winsize[1] // 12) / 2) < self.mini_map.rect.y
                     or pygame.mouse.get_pos()[1] + ((self.winsize[1] // 12) / 2) > (self.mini_map.rect.y + self.mini_map.h)):
-                pygame.draw.rect(self.window, (255, 255, 255), ((pygame.mouse.get_pos()[0]-((self.winsize[0]//12)/2), pygame.mouse.get_pos()[1]-((self.winsize[1]//12)/2)), (self.winsize[0]//12, self.winsize[1]//12)), 4)
                 if pygame.mouse.get_pressed()[0]:
                     game.map_cords_x = ((pygame.mouse.get_pos()[0]*12 - self.mini_map.w - 20 - self.winsize[0]//2) * -1)
                     game.map_cords_y = ((pygame.mouse.get_pos()[1]*12 - self.mini_map.w - 20 - self.winsize[1]//2) * -1)
+                pygame.draw.rect(self.window, (255, 255, 0), (pygame.mouse.get_pos()[0]-self.fov.w/2, pygame.mouse.get_pos()[1]-self.fov.h/2, self.fov.w, self.fov.h), 4)
             else:
-                pygame.draw.rect(self.window, (255, 0, 0), ((pygame.mouse.get_pos()[0]-((self.winsize[0]//12)/2), pygame.mouse.get_pos()[1]-((self.winsize[1]//12)/2)), (self.winsize[0]//12, self.winsize[1]//12)), 4)
+                pygame.draw.rect(self.window, (255, 0, 0), (pygame.mouse.get_pos()[0]-self.fov.w/2, pygame.mouse.get_pos()[1]-self.fov.h/2, self.fov.w, self.fov.h), 4)
+        pygame.draw.rect(self.window, (255, 255, 255), self.fov, 4)
 
     def menu(self):
         self.map()
@@ -781,14 +787,15 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.game = False
             keys = pygame.key.get_pressed()
-            if keys[pygame.K_d]:
-                self.map_cords_x += 3
-            if keys[pygame.K_a]:
-                self.map_cords_x -= 3
-            if keys[pygame.K_w]:
-                self.map_cords_y -= 3
-            if keys[pygame.K_s]:
-                self.map_cords_y += 3
+            for player in self.orcs:
+                if keys[pygame.K_d]:
+                    player.rect.x += 3
+                if keys[pygame.K_a]:
+                    player.rect.x -= 3
+                if keys[pygame.K_w]:
+                    player.rect.y -= 3
+                if keys[pygame.K_s]:
+                    player.rect.y += 3
             self.window.blit(self.background, (self.map_cords_x, self.map_cords_y))
             self.trees.draw(self.window)
             for orc in self.orcs:
