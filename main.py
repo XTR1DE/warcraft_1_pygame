@@ -4,12 +4,19 @@ import random
 
 pygame.init()
 
+state = {
+    'pressed_on_mini_map': False
+}
+
 
 class GameSprite(pygame.sprite.Sprite):
     def __init__(self, img, speed, health, damage, x, y, w, h):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.transform.scale(pygame.image.load(img), (w, h))
         self.rect = self.image.get_rect()
+        self.new_rect = self.image.get_rect()
+        self.new_rect.x = x
+        self.new_rect.y = y
         self.rect.x = x
         self.rect.y = y
         self.speed = speed
@@ -29,24 +36,42 @@ class GameSprite(pygame.sprite.Sprite):
 
     def health_bar(self, window):
         fill_width = self.w * self.health // self.max_health
-        fill_rect = pygame.Rect(self.rect.x, self.rect.y - 4, fill_width, 5)
-        fill_rect_red = pygame.Rect(self.rect.x, self.rect.y - 4, self.w, 5)
+        fill_rect = pygame.Rect(self.new_rect.x, self.new_rect.y - 4, fill_width, 5)
+        fill_rect_red = pygame.Rect(self.new_rect.x, self.new_rect.y - 4, self.w, 5)
         pygame.draw.rect(window, (255, 0, 0), fill_rect_red)
         pygame.draw.rect(window, (0, 255, 0), fill_rect)
 
     def draw(self, window):
-        window.blit(self.image, (self.rect.x, self.rect.y))
+        self.new_rect.x = self.rect.x - (Drawing.dx - Drawing.mini_map.rect.x) * 12
+        self.new_rect.y = self.rect.y - (Drawing.dy - Drawing.mini_map.rect.y) * 12
+        self.new_rect.width = self.rect.width
+        self.new_rect.height = self.rect.height
+        # print("Позиция нового объекта", new_rect.x, new_rect.y)
+
+        window.blit(self.image, (self.new_rect.x, self.new_rect.y))
         self.health_bar(window)
 
     def hitbox(self):
-        pygame.draw.rect(game.window, (78, 78, 78), (self.rect.x, self.rect.y, self.w, self.h), 1)
+        pygame.draw.rect(game.window, (78, 78, 78), (self.new_rect.x, self.new_rect.y, self.w, self.h), 1)
 
 
-class Fog(GameSprite):
-    pass
+class Fog(pygame.sprite.Sprite):
+    def __init__(self, x, y, w, h):
+        pygame.sprite.Sprite.__init__(self)
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.rect = pygame.rect.Rect(self.x, self.y, self.w, self.h)
+
+    def draw(self, window):
+        pygame.draw.rect(window, (0, 0, 0), self.rect)
 
 
 class Drawing:
+    dx, dy = 0, 0
+    mini_map = GameSprite('./map.png', 0, 0, 0, 6, 26, 0, 0)
+
     def __init__(self, window, background, orcs, knights, buildings, winsize, map_size, map_cords_x, map_cords_y):
         self.window = window  # Определяем окно, в котором будет рисоваться
         self.background = background  # Определяем фон
@@ -63,10 +88,11 @@ class Drawing:
         self.font = pygame.font.Font('BLKCHCRY.TTF', 38)  # Шрифт
         self.menus_image = pygame.transform.scale(pygame.image.load('./menus.png').convert_alpha(), (1560, 1060))  # Грузим изображение меню и изменяем масштаб до 1560x1060 пикселей
         self.menu_mask = pygame.mask.from_surface(self.menus_image)  # Создаем маску для изображения меню
-        self.mini_map = GameSprite('./map.png', 0, 0, 0, 6, 26, self.map_size[0]//12, self.map_size[1]//12)
+        Drawing.mini_map = GameSprite('./map.png', 0, 0, 0, 6, 26, self.map_size[0]//12, self.map_size[1]//12)
         self.cancel = GameSprite("./icons/Cancel_icon.png", 0, 0, 0, 227, 910, 70, 70)  # Создаем игровой спрайт "Отменить"
         self.shield = GameSprite("./icons/Shield_icon.png", 0, 0, 0, 20, 614, 110, 90)
         self.get_back = GameSprite("./icons/BackToBase.png", 0, 0, 0, 20, 710, 110, 90)
+        self.fov = pygame.rect.Rect(0, 0, 0, 0)
         # Build
         self.farm = GameSprite("./icons/Farm_icon.png", 0, 0, 0, 20, 614, 110, 90)
         self.mill = GameSprite("./icons/Mill_icon.png", 0, 0, 0, 150, 614, 110, 90)
@@ -106,24 +132,34 @@ class Drawing:
         }
 
     def map(self):
-        self.fov = pygame.rect.Rect((game.map_cords_x/12*-1+self.mini_map.w/12+14, game.map_cords_y/12*-1+self.mini_map.h/12), (self.winsize[0]/12-self.mini_map.w/12, self.winsize[1]/12))
-        self.window.blit(self.mini_map.image, (self.mini_map.rect.x, self.mini_map.rect.y))  # Отрисовываем изображение мини-карты
+        self.fov = pygame.rect.Rect((game.map_cords_x/12*-1+Drawing.mini_map.w/12+14, game.map_cords_y/12*-1+Drawing.mini_map.h/12), (self.winsize[0]/12-Drawing.mini_map.w/12, self.winsize[1]/12))
+        self.window.blit(Drawing.mini_map.image, (Drawing.mini_map.rect.x, Drawing.mini_map.rect.y))  # Отрисовываем изображение мини-карты
         for orc in self.orcs:
-            self.window.blit(pygame.transform.scale(pygame.image.load('./icons/Green_icon.png'), (3, 3)), (self.mini_map.rect.x + orc.rect.x//12, self.mini_map.rect.y + orc.rect.y//12))
+            self.window.blit(pygame.transform.scale(pygame.image.load('./icons/Green_icon.png'), (3, 3)), (Drawing.mini_map.rect.x + orc.rect.x//12, Drawing.mini_map.rect.y + orc.rect.y//12))
         for building in self.buildings:
             if not building.type == 'TownHall':
-                self.window.blit(pygame.transform.scale(pygame.image.load('./icons/Green_icon.png'), (6, 6)), (self.mini_map.rect.x + building.rect.x//12, self.mini_map.rect.y + building.rect.y//12))
+                self.window.blit(pygame.transform.scale(pygame.image.load('./icons/Green_icon.png'), (6, 6)), (Drawing.mini_map.rect.x + building.rect.x//12, Drawing.mini_map.rect.y + building.rect.y//12))
             else:
-                self.window.blit(pygame.transform.scale(pygame.image.load('./icons/Yellow_icon.png'), (6, 6)), (self.mini_map.rect.x + building.rect.x//12, self.mini_map.rect.y + building.rect.y//12))
-        if self.mini_map.rect.collidepoint(pygame.mouse.get_pos()):
-            if not (pygame.mouse.get_pos()[0] - ((self.winsize[0] // 12) / 2-self.mini_map.rect.x) < self.mini_map.rect.x
-                    or (pygame.mouse.get_pos()[0] + ((self.winsize[0] // 12) / 2 - self.mini_map.w//12)) > (self.mini_map.rect.x + self.mini_map.w)
-                    or pygame.mouse.get_pos()[1] - ((self.winsize[1] // 12) / 2) < self.mini_map.rect.y
-                    or pygame.mouse.get_pos()[1] + ((self.winsize[1] // 12) / 2) > (self.mini_map.rect.y + self.mini_map.h)):
+                self.window.blit(pygame.transform.scale(pygame.image.load('./icons/Yellow_icon.png'), (6, 6)), (Drawing.mini_map.rect.x + building.rect.x//12, Drawing.mini_map.rect.y + building.rect.y//12))
+        if Drawing.mini_map.rect.collidepoint(pygame.mouse.get_pos()):
+            if not (pygame.mouse.get_pos()[0] - ((self.winsize[0] // 12) / 2 - Drawing.mini_map.rect.x) < Drawing.mini_map.rect.x
+                    or (pygame.mouse.get_pos()[0] + ((self.winsize[0] // 12) / 2 - Drawing.mini_map.w//12)) > (Drawing.mini_map.rect.x + Drawing.mini_map.w-2)
+                    or pygame.mouse.get_pos()[1] - ((self.winsize[1] // 12) / 2) < Drawing.mini_map.rect.y
+                    or pygame.mouse.get_pos()[1] + ((self.winsize[1] // 12) / 2) > (Drawing.mini_map.rect.y + Drawing.mini_map.h)):
                 if pygame.mouse.get_pressed()[0]:
-                    game.map_cords_x = ((pygame.mouse.get_pos()[0]*12 - self.mini_map.w - 20 - self.winsize[0]//2) * -1)
-                    game.map_cords_y = ((pygame.mouse.get_pos()[1]*12 - self.mini_map.w - 20 - self.winsize[1]//2) * -1)
+                    game.map_cords_x = ((pygame.mouse.get_pos()[0]*12 - Drawing.mini_map.w - 20 - self.winsize[0]//2) * -1)
+                    game.map_cords_y = ((pygame.mouse.get_pos()[1]*12 - Drawing.mini_map.w - 20 - self.winsize[1]//2) * -1)
                 pygame.draw.rect(self.window, (255, 255, 0), (pygame.mouse.get_pos()[0]-self.fov.w/2, pygame.mouse.get_pos()[1]-self.fov.h/2, self.fov.w, self.fov.h), 4)
+                if pygame.mouse.get_pressed()[0]:
+                    Drawing.dx, Drawing.dy = self.fov.x - Drawing.mini_map.rect.x - 6, self.fov.y - Drawing.mini_map.rect.y - 1
+                    if not state['pressed_on_mini_map']:    # сдвиг обьектов
+                        for orc in self.orcs:
+                            orc.rect.x -= Drawing.dx*12
+                            orc.rect.y -= Drawing.dy*12
+                            print(orc.rect.x, orc.rect.y)
+                        state['pressed_on_mini_map'] = True
+                else:
+                    state['pressed_on_mini_map'] = False
             else:
                 pygame.draw.rect(self.window, (255, 0, 0), (pygame.mouse.get_pos()[0]-self.fov.w/2, pygame.mouse.get_pos()[1]-self.fov.h/2, self.fov.w, self.fov.h), 4)
         pygame.draw.rect(self.window, (255, 255, 255), self.fov, 4)
@@ -473,7 +509,7 @@ class Player(GameSprite):
 
     def radius1(self):
         self.radius_hitbox = pygame.Rect((self.rect.x-self.radius, self.rect.y-self.radius), (self.w+self.radius*2, self.h+self.radius*2))
-        # pygame.draw.rect(game.window, (255, 0, 0), self.radius_hitbox, 1)
+        # pygame.draw.rect(game.window, (255, 0, 0), self.radius_hitbox, 1)radius_hitbox
 
     def click(self):
         # Выбор героя
@@ -481,7 +517,7 @@ class Player(GameSprite):
             mouse_clicked = pygame.mouse.get_pressed()
             mouse_pos = pygame.mouse.get_pos()
             if mouse_clicked[0]:
-                if self.rect.collidepoint(mouse_pos):
+                if self.new_rect.collidepoint(mouse_pos):
                     self.choosed = True
             # Если выбрали героя
             if self.choosed:
@@ -498,10 +534,10 @@ class Player(GameSprite):
                         self.x2 *= 12
                         self.y2 *= 12
                     # Разность сторон y, катет
-                    self.b = abs(self.rect.y - a1[1])
+                    self.b = abs(self.new_rect.y - a1[1])
 
                     # Разность сторон x, катет
-                    self.a = abs(self.rect.x - a1[0])
+                    self.a = abs(self.new_rect.x - a1[0])
 
                     # Гиппотенуза
                     self.c = math.sqrt(self.a ** 2 + self.b ** 2)
@@ -511,7 +547,7 @@ class Player(GameSprite):
                         self.angle = math.atan(self.a / self.b) * (180 / math.pi)
                     except ZeroDivisionError:
                         pass
-                    pygame.draw.line(game.window, (255, 0, 0), (self.rect.centerx, self.rect.centery), a1)
+                    pygame.draw.line(game.window, (255, 0, 0), (self.new_rect.centerx, self.new_rect.centery), a1)
 
                     # Равномерное смещене по y
                     self.dy = math.cos(math.radians(self.angle)) * self.speed
@@ -520,13 +556,13 @@ class Player(GameSprite):
                     self.dx = math.sin(math.radians(self.angle)) * self.speed
 
                     # Выбор четверти кординатной плоскости
-                    if self.rect.centerx < self.x2 and self.rect.centery < self.y2:
+                    if self.new_rect.centerx < self.x2 and self.new_rect.centery < self.y2:
                         self.direction = '4'
-                    if self.rect.centerx < self.x2 and self.rect.centery > self.y2:
+                    if self.new_rect.centerx < self.x2 and self.new_rect.centery > self.y2:
                         self.direction = '1'
-                    if self.rect.centerx > self.x2 and self.rect.centery < self.y2:
+                    if self.new_rect.centerx > self.x2 and self.new_rect.centery < self.y2:
                         self.direction = '3'
-                    if self.rect.centerx > self.x2 and self.rect.centery > self.y2:
+                    if self.new_rect.centerx > self.x2 and self.new_rect.centery > self.y2:
                         self.direction = '2'
                     try:
                         if game.menu.menu_mask.get_at(pygame.mouse.get_pos()) \
@@ -589,7 +625,7 @@ class Player(GameSprite):
                         self.rect.x, self.rect.y, self.direction = building.rect.x - random.randint(70, 85), random.randint(building.rect.y, building.rect.y + 15), ''
                         game.orcs.add(self)
             if building.type == 'Farm' or building.type == 'Barracks':
-                if self.rect.colliderect(building):
+                if self.new_rect.colliderect(building):
                     self.rect.x, self.rect.y = building.rect.x - 70, building.rect.y
 
     def auto_farm(self):
@@ -735,8 +771,8 @@ class Game:
         self.window = pygame.display.set_mode(self.winsize)
         self.clock = pygame.time.Clock()
         self.fps = 30
-        self.map_cords_x = 0
-        self.map_cords_y = 0
+        self.map_cords_x = 0+321
+        self.map_cords_y = 12
         self.map_size = (3780, 4200)
         self.background = pygame.transform.scale(pygame.image.load("./map.png"), self.map_size)
         self.orcs = pygame.sprite.Group()
@@ -744,6 +780,7 @@ class Game:
         self.trees = pygame.sprite.Group()
         self.buildings = pygame.sprite.Group()
         self.inside_goldmine = pygame.sprite.Group()
+        self.fogs = pygame.sprite.Group()
         self.menu = Drawing(self.window, self.background, self.orcs, self.knights, self.buildings, self.winsize, self.map_size, self.map_cords_x, self.map_cords_y)  # menu
         self.wood = 40
         self.gold = 450
@@ -775,11 +812,26 @@ class Game:
         for i in range(3):
             self.knights.add(Knight("knight.png", 3, 10, 4, 4, x, 500, 40, 40, 'Rider', 15))
             x += 80
+        # random spawn goldmine
+        chunks_w = int(self.map_size[0]/self.winsize[0])
+        chunks_h = int(self.map_size[1]/self.winsize[1])
+
         self.orcs.add(Player("Spearman.png", 2, 10, 4, 4, 1150, 400, 40, 40, 'Spearman', 25))
         self.buildings.add(Building("TownHall.png", 0, 15, 0, 880, 130, 100, 100, 'TownHall'))
         self.buildings.add(Building("Farm.png", 0, 10, 0, 1000, 300, 80, 80, 'Farm'))
         self.buildings.add(Building('GoldMine.png', 0, 100, 0, 800, 300, 80, 80, 'GoldMine'))
         self.buildings.add(Building('Barracks.png', 0, 10, 0, 600, 300, 90, 90, 'Barracks'))
+        # fog
+        size_fog = 60
+        n = self.map_size[0]//size_fog
+        g = self.map_size[1]//size_fog
+        x, y = 0, 0
+        for o in range(n):
+            for p in range(g):
+                self.fogs.add(Fog(x, y, size_fog, size_fog))
+                x += size_fog
+            y += size_fog
+            x = 0
 
     def run(self):
         while self.game:
@@ -817,6 +869,17 @@ class Game:
             for building in self.buildings:
                 building.draw(self.window)
                 building.update()
+            for fog in self.fogs:
+                #if fog.rect.colliderect(self.map_cords_x*-1+self.menu.mini_map.w, self.map_cords_y*-1, self.winsize[0]-self.menu.mini_map.w, self.winsize[1]): # если туман в зоне видимости, то отрисовать туман, чтобы не нагружать
+                fog.draw(self.window)
+                for orc in self.orcs:
+                    if orc.new_rect.colliderect(fog.rect):
+                        fog.kill()
+                for building in self.buildings:
+                    if not building.type == 'GoldMine':
+                        if building.rect.colliderect(fog.rect):
+                            fog.kill()
+            #pygame.draw.rect(self.window, (0, 0, 255), (self.map_cords_x*-1+self.menu.mini_map.w, self.map_cords_y*-1, self.winsize[0]-self.menu.mini_map.w, self.winsize[1]), 3) # зона видимости
             self.menu.menu()
             self.clock.tick(self.fps)
             pygame.display.update()
